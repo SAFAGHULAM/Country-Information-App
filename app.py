@@ -1,11 +1,16 @@
 import streamlit as st
 import requests
+from tenacity import retry, wait_fixed, stop_after_attempt
 
+@retry(wait=wait_fixed(2), stop=stop_after_attempt(3))  # Retry after 2 seconds, 3 attempts
 def fetch_country_data(country_name):
     url = f"https://restcountries.com/v3.1/name/{country_name}"
     try:
-        # Increased timeout to 30 seconds
-        response = requests.get(url, timeout=30, verify=False)
+        # Using requests session for persistent connections
+        session = requests.Session()
+        session.headers.update({"User-Agent": "Country Info App"})
+        
+        response = session.get(url, timeout=30, verify=False)
         
         if response.status_code == 200:
             data = response.json()
@@ -20,13 +25,8 @@ def fetch_country_data(country_name):
         else:
             return None
     
-    except requests.exceptions.Timeout:
-        st.error("The request timed out. Please try again later.")
-        return None
-    
     except requests.exceptions.RequestException as e:
-        st.error(f"An error occurred: {e}")
-        return None
+        raise Exception(f"An error occurred: {e}")
 
 def main():
     st.title("Country Information App")
@@ -51,5 +51,6 @@ def main():
             
 if __name__ == "__main__":
     main()
+
 
 
